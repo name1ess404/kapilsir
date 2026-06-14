@@ -1,2 +1,38 @@
 .env
 node_modules/
+
+# Define your base Supabase storage bucket URL string (Replace your-project-id with your actual ID)
+$bucketBaseUrl = "https://https://nferkcfkuzwsrbadpbzl.supabase.co/storage/v1/object/public/kapil-assets"
+
+# Set location to your main folder path
+$parentPath = "E:\mukut\Study_materials\Kapil_Sir"
+
+# Gather all files across subdirectories
+$files = Get-ChildItem -Path $parentPath -Recurse -File -Filter *.pdf
+
+$sqlValues = @()
+
+foreach ($file in $files) {
+    $fileName = $file.Name.Replace("'", "''") # Escape single quotes for SQL safety
+    $category = $file.Directory.Name
+    
+    # Format size automatically to match your layout style
+    $sizeKb = [math]::Round($file.Length / 1kb, 2)
+    if ($sizeKb -ge 1024) {
+        $sizeStr = "$([math]::Round($sizeKb / 1024, 2)) MB"
+    } else {
+        $sizeStr = "$sizeKb KB"
+    }
+    
+    # URL Encode path components for space safety
+    $encodedCategory = [System.Web.HttpUtility]::UrlEncode($category).Replace("+", "%20")
+    $encodedName = [System.Web.HttpUtility]::UrlEncode($file.Name).Replace("+", "%20")
+    $fileUrl = "$bucketBaseUrl/$encodedCategory/$encodedName"
+    
+    $sqlValues += "    ('$fileName', '$category', '$sizeStr', '$fileUrl')"
+}
+
+# Combine strings into a clean output execution format
+$finalSql = "INSERT INTO public.files (name, category, size, url) `nVALUES `n" + ($sqlValues -join ",`n") + ";"
+$finalSql | Set-Clipboard
+Write-Host "`n==== SQL Query generated and copied to your Clipboard! ====`n" -ForegroundColor Green
