@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kapil Sir files</title>
+    <style>
+        :root {
+            --background: #121214;
+            --card-bg: #1a1a1e;
+            --border: #2a2a30;
+            --text-primary: #ededf0;
+            --text-secondary: #a1a1aa;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 50px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container { width: 100%; max-width: 650px; }
+        h1 { font-size: 24px; font-weight: 600; margin: 0 0 25px 0; text-align: center; }
+        .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 35px; }
+        
+        .folder-tab {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
+            padding: 14px; text-align: center; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s ease;
+        }
+        .folder-tab:hover { border-color: var(--text-secondary); }
+        .folder-tab.active { border-color: var(--accent); background: #1d2433; color: #60a5fa; }
+        .folder-icon { font-size: 24px; display: block; margin-bottom: 6px; }
+
+        .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 15px; }
+        .status-box { text-align: center; font-size: 14px; color: var(--text-secondary); padding: 30px 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; }
+        .file-list { display: flex; flex-direction: column; gap: 10px; }
+        
+        .file-row {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
+            padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .file-info { display: flex; flex-direction: column; gap: 4px; max-width: 70%; }
+        .file-name { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-size { font-size: 12px; color: var(--text-secondary); }
+
+        .btn-download {
+            background: var(--accent); color: white; padding: 7px 14px; border-radius: 6px;
+            font-size: 13px; text-decoration: none; font-weight: 500; transition: background 0.15s ease;
+        }
+        .btn-download:hover { background: var(--accent-hover); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Kapil Sir files</h1>
+    <div class="section-title">Select Directory</div>
+    <div id="folders-container" class="folder-grid"></div>
+
+    <div id="files-section-title" class="section-title" style="display:none;">Files</div>
+    <div id="status" class="status-box">Select a folder category above.</div>
+    <main id="files-list" class="file-list"></main>
+</div>
+
+<script>
+    // Adjust base URL when deployed to production Render environments
+    const API_BASE = window.location.origin;
+
+    const foldersContainer = document.getElementById('folders-container');
+    const filesSectionTitle = document.getElementById('files-section-title');
+    const statusBox = document.getElementById('status');
+    const filesList = document.getElementById('files-list');
+
+    // Fetch and render application folders on initial launch
+    async function initApp() {
+        try {
+            statusBox.textContent = "Loading available directories...";
+            const response = await fetch(`${API_BASE}/api/folders`);
+            if (!response.ok) throw new Error("Network configuration failed");
+            
+            const folders = await response.json();
+            
+            if(folders.length === 0) {
+                statusBox.textContent = "No data categories found in Supabase database.";
+                return;
+            }
+
+            statusBox.textContent = "Select a folder category above.";
+            renderFolders(folders);
+        } catch (error) {
+            console.error(error);
+            statusBox.textContent = "Error loading cloud directories. Please try again.";
+        }
+    }
+
+    function renderFolders(folders) {
+        foldersContainer.innerHTML = '';
+        folders.forEach(folder => {
+            const folderTab = document.createElement('div');
+            folderTab.className = 'folder-tab';
+            folderTab.dataset.id = folder.id;
+            folderTab.innerHTML = `
+                <span class="folder-icon">📁</span>
+                ${escapeHTML(folder.name)}
+            `;
+            
+            folderTab.addEventListener('click', () => handleFolderSelection(folderTab, folder.id));
+            foldersContainer.appendChild(folderTab);
+        });
+    }
+
+    async function handleFolderSelection(selectedTab, folderId) {
+        // Toggle Active Styling across tabs
+        document.querySelectorAll('.folder-tab').forEach(tab => tab.classList.remove('active'));
+        selectedTab.classList.add('active');
+
+        // Reset display lists
+        filesList.innerHTML = '';
+        filesSectionTitle.style.display = 'block';
+        statusBox.style.display = 'block';
+        statusBox.textContent = "Fetching file contents from Supabase Storage...";
+
+        try {
+            const response = await fetch(`${API_BASE}/api/files/${folderId}`);
+            if (!response.ok) throw new Error("Could not parse cloud files");
+
+            const files = await response.json();
+            
+            if (files.length === 0) {
+                statusBox.textContent = "This category does not contain files.";
+                return;
+            }
+
+            statusBox.style.display = 'none'; // Hide placeholder status when files render
+            renderFiles(files);
+        } catch (error) {
+            console.error(error);
+            statusBox.textContent = "Error grabbing active file indexes. Re-evaluating routing pipeline.";
+        }
+    }
+
+    function renderFiles(files) {
+        filesList.innerHTML = '';
+        files.forEach(file => {
+            const fileRow = document.createElement('div');
+            fileRow.className = 'file-row';
+            
+            // Build file row explicitly mapping direct 'url' parameter for file download tracking
+            fileRow.innerHTML = `
+                <div class="file-info">
+                    <span class="file-name" title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</span>
+                    <span class="file-size">${escapeHTML(file.size)}</span>
+                </div>
+                <a href="${file.url}" class="btn-download" target="_blank" rel="noopener noreferrer" download="${escapeHTML(file.name)}">Download</a>
+            `;
+            filesList.appendChild(fileRow);
+        });
+    }
+
+    // Utility XSS injection cleanup helper
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, 
+            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        );
+    }
+
+    // Fire application load loop
+    document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
