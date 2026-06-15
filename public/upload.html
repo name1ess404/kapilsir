@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Files</title>
+    <style>
+        :root {
+            --background: #121214; --card-bg: #1a1a1e; --border: #2a2a30;
+            --text-primary: #ededf0; --text-secondary: #a1a1aa;
+            --accent: #10b981; --accent-hover: #059669; --danger: #ef4444; --danger-hover: #dc2626;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background-color: var(--background); color: var(--text-primary); margin: 0; padding: 50px 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 650px; }
+        h1 { font-size: 24px; font-weight: 600; margin: 0 0 10px 0; text-align: center; }
+        .subtitle { font-size: 14px; color: var(--text-secondary); text-align: center; margin-bottom: 30px; }
+        .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 24px; display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+        input[type="text"], select, input[type="file"] { background: #121214; border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 14px; outline: none; }
+        input[type="text"]:focus, select:focus { border-color: var(--accent); }
+        .btn-submit { background: var(--accent); color: white; padding: 12px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s ease; text-align: center; margin-top: 10px; }
+        .btn-submit:hover { background: var(--accent-hover); }
+        .btn-submit:disabled { background: var(--border); cursor: not-allowed; }
+        .status-message { padding: 12px; border-radius: 6px; font-size: 14px; text-align: center; display: none; }
+        .status-success { background: #064e3b; color: #34d399; border: 1px solid #047857; }
+        .status-error { background: #7f1d1d; color: #f87171; border: 1px solid #b91c1c; }
+        .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 35px; }
+        .folder-tab { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s ease; }
+        .folder-tab:hover { border-color: var(--text-secondary); }
+        .folder-tab.active { border-color: var(--accent); background: #142920; color: #34d399; }
+        .folder-icon { font-size: 24px; display: block; margin-bottom: 6px; }
+        
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin: 0; }
+        
+        .bulk-actions { display: none; gap: 10px; align-items: center; }
+        .btn-bulk-delete { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s ease; }
+        .btn-bulk-delete:hover { background: var(--danger-hover); }
+        
+        .status-box { text-align: center; font-size: 14px; color: var(--text-secondary); padding: 30px 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; }
+        .file-list { display: flex; flex-direction: column; gap: 10px; }
+        
+        /* FIXED: Adjusted gap spacing since single delete buttons are missing */
+        .manage-row { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; display: flex; align-items: center; gap: 15px; }
+        .file-checkbox { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+        .file-info { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
+        .file-name { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-size { font-size: 12px; color: var(--text-secondary); }
+        
+        .back-link { display: block; text-align: center; margin-top: 30px; color: var(--text-secondary); font-size: 13px; text-decoration: none; }
+        .back-link:hover { color: var(--text-primary); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Upload Here</h1>
+    <div class="subtitle">Select a category and add your PDFs below</div>
+
+    <form id="uploadForm" class="form-card">
+        <div id="statusAlert" class="status-message"></div>
+        <div class="form-group">
+            <label for="categorySelect">Select Category</label>
+            <select id="categorySelect" required>
+                <option value="" disabled selected>Select an option...</option>
+                <option value="NEW">+ Create New Category</option>
+            </select>
+        </div>
+        <div class="form-group" id="customCategoryGroup" style="display: none;">
+            <label for="customCategory">New Category Name</label>
+            <input type="text" id="customCategory" placeholder="e.g., Homework">
+        </div>
+        <div class="form-group">
+            <label for="fileInput">Choose PDF Files</label>
+            <input type="file" id="fileInput" accept=".pdf" multiple required> 
+        </div>
+        <button type="submit" id="submitBtn" class="btn-submit">Upload Documents</button>
+    </form>
+
+    <hr style="border: 0; border-top: 1px solid var(--border); margin: 40px 0;">
+
+    <div class="section-title" style="margin-bottom: 15px;">Select Category to Manage</div>
+    <div id="folders-container" class="folder-grid"></div>
+    
+    <div class="section-header">
+        <div id="files-section-title" class="section-title" style="display:none;">Files Inside Directory</div>
+        <div id="bulkActionsMenu" class="bulk-actions">
+            <button id="btnBulkDelete" class="btn-bulk-delete">Delete Selected (0)</button>
+        </div>
+    </div>
+
+    <div id="status" class="status-box">Select a category above to view files.</div>
+    <main id="adminFilesList" class="file-list"></main>
+
+    <a href="/" class="back-link">← Go Back</a>
+</div>
+
+<script>
+    const API_BASE = window.location.origin;
+    const form = document.getElementById('uploadForm');
+    const categorySelect = document.getElementById('categorySelect');
+    const customCategoryGroup = document.getElementById('customCategoryGroup');
+    const customCategoryInput = document.getElementById('customCategory');
+    const statusAlert = document.getElementById('statusAlert');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const foldersContainer = document.getElementById('folders-container');
+    const filesSectionTitle = document.getElementById('files-section-title');
+    const statusBox = document.getElementById('status');
+    const adminFilesList = document.getElementById('adminFilesList');
+    
+    const bulkActionsMenu = document.getElementById('bulkActionsMenu');
+    const btnBulkDelete = document.getElementById('btnBulkDelete');
+
+    let activeFolderName = null;
+
+    async function initAdmin() {
+        categorySelect.innerHTML = `
+            <option value="" disabled selected>Select an option...</option>
+            <option value="NEW">+ Create New Category</option>
+        `;
+        await loadCategoriesAndTabs();
+        
+        if (activeFolderName !== null) {
+            const activeTab = Array.from(document.querySelectorAll('.folder-tab')).find(tab => tab.dataset.id === activeFolderName);
+            if (activeTab) {
+                await handleFolderSelection(activeTab, activeFolderName);
+            } else {
+                resetFilesView();
+            }
+        } else {
+            resetFilesView();
+        }
+    }
+
+    function resetFilesView() {
+        adminFilesList.innerHTML = '';
+        filesSectionTitle.style.display = 'none';
+        bulkActionsMenu.style.display = 'none';
+        statusBox.style.display = 'block';
+        statusBox.textContent = "Select a category above to view files.";
+        activeFolderName = null;
+    }
+
+    async function loadCategoriesAndTabs() {
+        try {
+            const res = await fetch(`${API_BASE}/api/folders`);
+            if (!res.ok) throw new Error();
+            const categories = await res.json();
+            
+            foldersContainer.innerHTML = '';
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.name;
+                opt.textContent = cat.name;
+                categorySelect.appendChild(opt);
+
+                const folderTab = document.createElement('div');
+                folderTab.className = 'folder-tab';
+                folderTab.dataset.id = cat.id; 
+                folderTab.innerHTML = `<span class="folder-icon">📁</span>${escapeHTML(cat.name)}`;
+                folderTab.addEventListener('click', () => handleFolderSelection(folderTab, cat.id));
+                foldersContainer.appendChild(folderTab);
+            });
+        } catch (err) {
+            statusBox.textContent = "Error loading categories.";
+        }
+    }
+
+    async function handleFolderSelection(selectedTab, categoryName) {
+        activeFolderName = categoryName;
+        document.querySelectorAll('.folder-tab').forEach(tab => tab.classList.remove('active'));
+        selectedTab.classList.add('active');
+
+        adminFilesList.innerHTML = '';
+        filesSectionTitle.style.display = 'block';
+        bulkActionsMenu.style.display = 'none'; 
+        statusBox.style.display = 'block';
+        // FIXED: Humanized loading message
+        statusBox.textContent = "Loading files...";
+
+        try {
+            const response = await fetch(`${API_BASE}/api/files/${encodeURIComponent(categoryName)}`);
+            const files = await response.json();
+
+            if (files.length === 0) {
+                statusBox.textContent = "No files in this category.";
+                return;
+            }
+
+            statusBox.style.display = 'none';
+            renderAdminFiles(files);
+        } catch (error) {
+            statusBox.textContent = "Error loading files.";
+        }
+    }
+
+    function renderAdminFiles(files) {
+        adminFilesList.innerHTML = '';
+        files.forEach(file => {
+            const row = document.createElement('div');
+            row.className = 'manage-row';
+            // FIXED: Removed the inline individual <button> elements entirely
+            row.innerHTML = `
+                <input type="checkbox" class="file-checkbox" data-id="${file.id}" onchange="updateBulkDeleteButtonState()">
+                <div class="file-info">
+                    <span class="file-name" title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</span>
+                    <span class="file-size">${escapeHTML(file.size)}</span>
+                </div>
+            `;
+            adminFilesList.appendChild(row);
+        });
+        updateBulkDeleteButtonState();
+    }
+
+    function updateBulkDeleteButtonState() {
+        const checkedBoxes = document.querySelectorAll('.file-checkbox:checked');
+        const count = checkedBoxes.length;
+        
+        if (count > 0) {
+            bulkActionsMenu.style.display = 'flex';
+            btnBulkDelete.textContent = `Delete Selected (${count})`;
+        } else {
+            bulkActionsMenu.style.display = 'none';
+        }
+    }
+
+    btnBulkDelete.addEventListener('click', async () => {
+        const checkedBoxes = document.querySelectorAll('.file-checkbox:checked');
+        const idsToDelete = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+        
+        if (idsToDelete.length === 0) return;
+        
+        if (!confirm(`Delete all ${idsToDelete.length} selected files?`)) return;
+        
+        btnBulkDelete.disabled = true;
+        btnBulkDelete.textContent = "Deleting...";
+        await executeDeleteSequence(idsToDelete);
+        btnBulkDelete.disabled = false;
+    });
+
+    async function executeDeleteSequence(idArray) {
+        try {
+            await Promise.all(idArray.map(async (id) => {
+                const response = await fetch(`${API_BASE}/api/files/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.error || "Error deleting");
+                }
+            }));
+            await initAdmin();
+        } catch (err) {
+            alert("Error: " + err.message);
+        }
+    }
+
+    categorySelect.addEventListener('change', (e) => {
+        if (e.target.value === 'NEW') {
+            customCategoryGroup.style.display = 'flex';
+            customCategoryInput.required = true;
+        } else {
+            customCategoryGroup.style.display = 'none';
+            customCategoryInput.required = false;
+        }
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        statusAlert.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Uploading...";
+
+        const formData = new FormData();
+        formData.append('category', categorySelect.value);
+        formData.append('customCategory', customCategoryInput.value);
+        
+        const filesInput = document.getElementById('fileInput');
+        for (let i = 0; i < filesInput.files.length; i++) {
+            formData.append('files', filesInput.files[i]);
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error);
+
+            statusAlert.className = "status-message status-success";
+            statusAlert.textContent = result.message || "Done!";
+            statusAlert.style.display = 'block';
+            form.reset();
+            customCategoryGroup.style.display = 'none';
+            await initAdmin();
+        } catch (error) {
+            statusAlert.className = "status-message status-error";
+            statusAlert.textContent = error.error || "Upload failed.";
+            statusAlert.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Upload Documents";
+        }
+    });
+
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+    }
+    document.addEventListener('DOMContentLoaded', initAdmin);
+</script>
+</body>
+</html>

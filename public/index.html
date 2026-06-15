@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kapil Sir files</title>
+    <title>Kapil Sir Files</title>
     <style>
         :root {
             --background: #121214;
@@ -58,17 +58,16 @@
 </head>
 <body>
 <div class="container">
-    <h1>Kapil Sir files</h1>
-    <div class="section-title">Select Directory</div>
+    <h1>Kapil Sir Files</h1>
+    <div class="section-title">Select Category</div>
     <div id="folders-container" class="folder-grid"></div>
 
     <div id="files-section-title" class="section-title" style="display:none;">Files</div>
-    <div id="status" class="status-box">Select a folder category above.</div>
+    <div id="status" class="status-box">Select a category above.</div>
     <main id="files-list" class="file-list"></main>
 </div>
 
 <script>
-    // Adjust base URL when deployed to production Render environments
     const API_BASE = window.location.origin;
 
     const foldersContainer = document.getElementById('folders-container');
@@ -76,25 +75,25 @@
     const statusBox = document.getElementById('status');
     const filesList = document.getElementById('files-list');
 
-    // Fetch and render application folders on initial launch
     async function initApp() {
         try {
-            statusBox.textContent = "Loading available directories...";
+            // FIXED: Humanized loading message
+            statusBox.textContent = "Loading...";
             const response = await fetch(`${API_BASE}/api/folders`);
-            if (!response.ok) throw new Error("Network configuration failed");
+            if (!response.ok) throw new Error("Failed to load");
             
             const folders = await response.json();
             
             if(folders.length === 0) {
-                statusBox.textContent = "No data categories found in Supabase database.";
+                statusBox.textContent = "No categories found.";
                 return;
             }
 
-            statusBox.textContent = "Select a folder category above.";
+            statusBox.textContent = "Select a category above.";
             renderFolders(folders);
         } catch (error) {
             console.error(error);
-            statusBox.textContent = "Error loading cloud directories. Please try again.";
+            statusBox.textContent = "Error loading files. Please refresh.";
         }
     }
 
@@ -115,32 +114,31 @@
     }
 
     async function handleFolderSelection(selectedTab, folderId) {
-        // Toggle Active Styling across tabs
         document.querySelectorAll('.folder-tab').forEach(tab => tab.classList.remove('active'));
         selectedTab.classList.add('active');
 
-        // Reset display lists
         filesList.innerHTML = '';
         filesSectionTitle.style.display = 'block';
         statusBox.style.display = 'block';
-        statusBox.textContent = "Fetching file contents from Supabase Storage...";
+        // FIXED: Humanized loading message
+        statusBox.textContent = "Loading files...";
 
         try {
-            const response = await fetch(`${API_BASE}/api/files/${folderId}`);
-            if (!response.ok) throw new Error("Could not parse cloud files");
+            const response = await fetch(`${API_BASE}/api/files/${encodeURIComponent(folderId)}`);
+            if (!response.ok) throw new Error("Could not get files");
 
             const files = await response.json();
             
             if (files.length === 0) {
-                statusBox.textContent = "This category does not contain files.";
+                statusBox.textContent = "No files in this category.";
                 return;
             }
 
-            statusBox.style.display = 'none'; // Hide placeholder status when files render
+            statusBox.style.display = 'none';
             renderFiles(files);
         } catch (error) {
             console.error(error);
-            statusBox.textContent = "Error grabbing active file indexes. Re-evaluating routing pipeline.";
+            statusBox.textContent = "Error loading files.";
         }
     }
 
@@ -150,7 +148,6 @@
             const fileRow = document.createElement('div');
             fileRow.className = 'file-row';
             
-            // Build file row explicitly mapping direct 'url' parameter for file download tracking
             fileRow.innerHTML = `
                 <div class="file-info">
                     <span class="file-name" title="${escapeHTML(file.name)}">${escapeHTML(file.name)}</span>
@@ -162,14 +159,12 @@
         });
     }
 
-    // Utility XSS injection cleanup helper
     function escapeHTML(str) {
         return str.replace(/[&<>'"]/g, 
             tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
         );
     }
 
-    // Fire application load loop
     document.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
